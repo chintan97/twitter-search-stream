@@ -1,0 +1,44 @@
+>>> from pyspark import SQLContext
+>>> from pyspark.sql import Row
+>>> import re
+>>> sql_c = SQLContext(sc)
+>>> col = sc.textFile('/home/ubuntu/assignment_2/search_data.csv')  # https://datascience.stackexchange.com/questions/13123/import-csv-file-contents-into-pyspark-dataframes/13302
+>>> data = col.collect()
+>>> filter_data = []   # It will store each tweet in one index
+>>> for d in data:
+...     if d != '':
+...             filter_data.append(d.split(','))
+...
+>>> search_tweets = ['not safe', 'safe', 'accident', 'long waiting', 'expensive', 'friendly', 'snow storm', 'good school', 'good schools', 'bad school', 'bad schools', 'poor school', 'poor schools', 'immigrant', 'immigrants', 'pollution', 'bus', 'buses', 'park', 'parks', 'parking']
+>>> build_data = []   # It will contain tweet text
+>>> for d in filter_data:
+...     try:
+...             build_data.append(d[3])
+...     except:
+...             pass
+...
+>>> make_data = []   # It will contain processes tweet like lowered; not containing #, @
+>>> for d in build_data:
+...     filter = d.strip()
+...     filter = filter.lower()
+...     filter = re.sub(r"[^A-Za-z0-9]+", ' ', filter)
+...     make_data.append(filter)
+...
+>>> found_keywords = []   # It will contain keywords if found in the tweet
+>>> for d in make_data:
+...     for search in search_tweets:
+...             if search in d:
+...                     if search != 'safe':
+...                             count = d.count(search)
+...                             for i in range(count):
+...                                     found_keywords.append(search)
+...                     if (search == 'safe' and 'not safe' not in d and 'no safe' not in d):
+...                             count = d.count(search)
+...                             for i in range(count):
+...                                     found_keywords.append(search)
+...
+>>> m = sc.parallelize(found_keywords, 2)
+>>> x = m.map(lambda m:(m, 1))
+>>> y = x.map(lambda word: (word)).reduceByKey(lambda v1,v2: v1+v2)
+>>> print y.collect()
+[('not safe', 1), ('park', 19), ('snow storm', 1), ('parks', 1), ('good school', 1), ('expensive', 2), ('accident', 5), ('buses', 4), ('bus', 120), ('safe', 12), ('bad school', 1), ('immigrant', 3), ('parking', 12), ('pollution', 1), ('friendly', 13), ('long waiting', 1)]

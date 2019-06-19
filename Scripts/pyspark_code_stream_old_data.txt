@@ -1,0 +1,49 @@
+>>> from pyspark import SQLContext
+>>> from pyspark.sql import Row
+>>> import re
+>>> sql_c = SQLContext(sc)
+>>> col = sc.textFile('/home/ubuntu/assignment_2/tweets_stream_old.csv')  # https://datascience.stackexchange.com/questions/13123/import-csv-file-contents-into-pyspark-dataframes/13302
+>>> data = col.collect()
+>>> filter_data = []   # It will store each tweet in one index of list
+>>> for da in data:
+...     if da != '':
+...             filter_data.append(da.split(','))
+...
+>>> search_tweets = ['not safe', 'safe', 'accident', 'long waiting', 'expensive', 'friendly', 'snow storm', 'good school', 'good schools', 'bad school', 'bad schools', 'poor school', 'poor schools', 'immigrant', 'immigrants', 'pollution', 'bus', 'buses', 'park', 'parks', 'parking']
+>>> build_data = []   # It will contain actual tweet text
+>>> for da in filter_data:
+...     try:
+...             build_data.append(da[3])
+...     except:
+...             pass
+...
+>>> print len(build_data)
+1549
+>>> make_data = []   # It will contain processed tweet like lowered; not containing #, @
+>>> for da in build_data:
+...     filter = da.strip()
+...     filter = filter.lower()
+...     filter = re.sub(r"[^A-Za-z0-9]+", ' ', filter)
+...     make_data.append(filter)
+...
+>>> found_keywords = []   # It will contain keywords if found in the tweets
+>>> for da in make_data:
+...     for search in search_tweets:
+...             if search in da:
+...                     if search != 'safe':
+...                             count = da.count(search)
+...                             for i in range(count):
+...                                     found_keywords.append(search)
+...                     if (search == 'safe' and 'not safe' not in da and 'no safe' not in da):
+...                             count = da.count(search)
+...                             for i in range(count):
+...                                     found_keywords.append(search)
+...
+>>> print len(found_keywords)
+86
+>>> m = sc.parallelize(found_keywords, 2)
+>>> x = m.map(lambda m:(m, 1))
+>>> y = x.map(lambda word: (word)).reduceByKey(lambda v1,v2: v1+v2)
+>>> print y.collect()
+[('not safe', 1), ('park', 17), ('parks', 1), ('accident', 1), ('buses', 1), ('bus', 46), ('safe', 6), ('immigrant', 1), ('parking', 7), ('pollution', 1), ('friendly', 3), ('long waiting', 1)]
+>>>
